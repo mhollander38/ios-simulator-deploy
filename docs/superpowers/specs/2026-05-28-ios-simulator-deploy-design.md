@@ -51,8 +51,19 @@ If the chosen simulator is not yet booted, boot it with `xcrun simctl boot <udid
 
 ---
 
-## Step 3: Build
+## Step 3: Build Intent
 
+Ask the user:
+> "Build fresh and deploy, or deploy the last build?"
+
+**If "deploy last build":**
+Search for the most recently modified `.app` in:
+1. Project-relative paths: `./build/**/*.app`, `./DerivedData/**/*.app`
+2. `~/Library/Developer/Xcode/DerivedData/**/Build/Products/**-iphonesimulator/*.app`
+
+If no previous build is found, inform the user and offer to build fresh instead. If they decline, stop.
+
+**If "build fresh":**
 Detect the scheme and bundle identifier by running:
 ```
 xcodebuild -showBuildSettings 2>/dev/null | grep -E "PRODUCT_NAME|PRODUCT_BUNDLE_IDENTIFIER"
@@ -77,11 +88,11 @@ Stream build output. On `** BUILD FAILED **`, show the last 30 lines of output a
 
 ## Step 4: Install and Launch
 
-After a successful build, locate the `.app` in DerivedData:
+Locate the `.app` to deploy (either the one just built, or the most recently modified one found in Step 3):
 ```
 ~/Library/Developer/Xcode/DerivedData/<project-hash>/Build/Products/Debug-iphonesimulator/<AppName>.app
 ```
-(use `find` with `-name "*.app"` filtered to the project's DerivedData folder, pick most recently modified)
+(use `find` filtered to the project's DerivedData folder, pick most recently modified)
 
 Execute in order, stopping and reporting on any failure:
 1. `xcrun simctl install <udid> <path-to.app>`
