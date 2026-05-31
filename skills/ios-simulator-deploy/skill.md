@@ -25,7 +25,36 @@ Note the project type found for later use:
 
 If both a `.xcworkspace` and a `.xcodeproj` are found at the root, prefer the `.xcworkspace`.
 
-## Step 2: Select Simulator
+## Step 2: Build Intent
+
+Before doing anything else, ask the user:
+> "What would you like to do?
+> 1. Build fresh and deploy
+> 2. Deploy the last build (skip building)"
+
+**If option 2 — Deploy last build:**
+
+Search for the most recently modified simulator `.app`:
+```bash
+{ find . -maxdepth 6 -name "*.app" -path "*iphonesimulator*" 2>/dev/null; \
+  find ~/Library/Developer/Xcode/DerivedData -name "*.app" -path "*iphonesimulator*" 2>/dev/null; } \
+  | xargs ls -dt 2>/dev/null | head -1
+```
+
+Run the combined search to find the most recently modified `.app`. Show the user:
+> "Found: `<path>`
+> Last modified: `<date and time>`"
+
+Store this as `<app-path>`. Then continue to Step 3 (skip Step 4).
+
+If no `.app` is found at all, tell the user:
+> "No previous simulator build found. Would you like to build fresh instead?"
+
+If yes, treat as option 1. If no, stop.
+
+**If option 1 — Build fresh:** Continue to Step 3 first, then Step 4.
+
+## Step 3: Select Simulator
 
 List all available iOS simulators and separate booted from available:
 ```bash
@@ -88,40 +117,10 @@ xcrun simctl list devices | grep <udid>
 ```
 Wait until the output line contains `(Booted)`. If 60 seconds pass without reaching Booted, tell the user and stop.
 
-## Step 3: Build Intent
-
-**STOP. You MUST ask this question. Do not infer the answer from the user's original message — even if they said "deploy current changes" or "build and deploy". Always ask.**
-
-Ask the user:
-> "What would you like to do?
-> 1. Build fresh and deploy
-> 2. Deploy the last build (skip building)"
-
-**If option 2 — Deploy last build:**
-
-Search for the most recently modified simulator `.app`, checking the project folder first then global DerivedData:
-```bash
-{ find . -maxdepth 6 -name "*.app" -path "*iphonesimulator*" 2>/dev/null; \
-  find ~/Library/Developer/Xcode/DerivedData -name "*.app" -path "*iphonesimulator*" 2>/dev/null; } \
-  | xargs ls -dt 2>/dev/null | head -1
-```
-
-Run the combined search to find the most recently modified `.app`. Show the user:
-> "Found: `<path>`
-> Last modified: `<date and time>`"
-
-Then skip to Step 5.
-
-If no `.app` is found at all, tell the user:
-> "No previous simulator build found. Would you like to build fresh instead?"
-
-If yes, continue to Step 4. If no, stop.
-
-**If option 1 — Build fresh:** Continue to Step 4.
-
 ## Step 4: Build Fresh
 
-List available schemes:
+First, fetch the scheme, bundle identifier, and product name — you need these before building:
+
 ```bash
 xcodebuild [<-project ProjectName.xcodeproj | -workspace Name.xcworkspace>] -list 2>/dev/null
 ```
@@ -129,14 +128,17 @@ xcodebuild [<-project ProjectName.xcodeproj | -workspace Name.xcworkspace>] -lis
 
 If only one scheme is listed, use it. If multiple, present them and ask the user to choose.
 
-Get the bundle identifier and product name for the chosen scheme:
 ```bash
 xcodebuild [<-project ProjectName.xcodeproj | -workspace Name.xcworkspace>] -scheme <scheme> -showBuildSettings 2>/dev/null \
   | grep -E "^\s+(PRODUCT_BUNDLE_IDENTIFIER|PRODUCT_NAME)\s*="
 ```
 (Use the same `-project`/`-workspace` flag determined in Step 1)
 
-Note both values — `PRODUCT_BUNDLE_IDENTIFIER` is needed in Step 5 and `PRODUCT_NAME` is used to locate the `.app` after the build.
+Store both values now:
+- `<bundle-id>` = the value of `PRODUCT_BUNDLE_IDENTIFIER`
+- `<product-name>` = the value of `PRODUCT_NAME`
+
+Do not proceed to the build command until you have both values.
 
 Run the build using the project type determined in Step 1. Examples for each case:
 
@@ -183,9 +185,9 @@ tail -5 /tmp/xcodebuild-output.txt
 - If the output contains `** BUILD SUCCEEDED **`: continue.
 - If the output contains `** BUILD FAILED **`: run `tail -30 /tmp/xcodebuild-output.txt`, show those lines to the user, and stop.
 
-Locate the built `.app`:
+Locate the built `.app` and store it as `<app-path>`:
 ```bash
-find ~/Library/Developer/Xcode/DerivedData -name "<ProductName>.app" \
+find ~/Library/Developer/Xcode/DerivedData -name "<product-name>.app" \
   -path "*iphonesimulator*" 2>/dev/null \
   | xargs ls -dt 2>/dev/null | head -1
 ```
