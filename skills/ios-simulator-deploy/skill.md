@@ -90,6 +90,8 @@ Wait until the output line contains `(Booted)`. If 60 seconds pass without reach
 
 ## Step 3: Build Intent
 
+**STOP. You MUST ask this question. Do not infer the answer from the user's original message — even if they said "deploy current changes" or "build and deploy". Always ask.**
+
 Ask the user:
 > "What would you like to do?
 > 1. Build fresh and deploy
