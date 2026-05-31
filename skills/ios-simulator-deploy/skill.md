@@ -87,3 +87,75 @@ Then poll every 2 seconds for up to 60 seconds:
 xcrun simctl list devices | grep <udid>
 ```
 Wait until the output line contains `(Booted)`. If 60 seconds pass without reaching Booted, tell the user and stop.
+
+## Step 3: Build Intent
+
+Ask the user:
+> "What would you like to do?
+> 1. Build fresh and deploy
+> 2. Deploy the last build (skip building)"
+
+**If option 2 — Deploy last build:**
+
+Search for the most recently modified simulator `.app`, checking the project folder first then global DerivedData:
+```bash
+find . -maxdepth 6 -name "*.app" -path "*iphonesimulator*" 2>/dev/null
+find ~/Library/Developer/Xcode/DerivedData -name "*.app" -path "*iphonesimulator*" 2>/dev/null
+```
+
+Combine all results, pick the one with the most recent modification time. Show the user:
+> "Found: `<path>`
+> Last modified: `<date and time>`"
+
+Then skip to Step 5.
+
+If no `.app` is found at all, tell the user:
+> "No previous simulator build found. Would you like to build fresh instead?"
+
+If yes, continue to Step 4. If no, stop.
+
+**If option 1 — Build fresh:** Continue to Step 4.
+
+## Step 4: Build Fresh
+
+List available schemes:
+```bash
+xcodebuild -list 2>/dev/null
+```
+
+If only one scheme is listed, use it. If multiple, present them and ask the user to choose.
+
+Get the bundle identifier and product name for the chosen scheme:
+```bash
+xcodebuild -scheme <scheme> -showBuildSettings 2>/dev/null \
+  | grep -E "^\s+(PRODUCT_BUNDLE_IDENTIFIER|PRODUCT_NAME)\s*="
+```
+
+Note both values — `PRODUCT_BUNDLE_IDENTIFIER` is needed in Step 5 and `PRODUCT_NAME` is used to locate the `.app` after the build.
+
+Run the build (use `-workspace <name>.xcworkspace` instead of `-project <name>.xcodeproj` if a workspace was found in Step 1; for Package.swift-only projects, omit both and use `-scheme` only):
+```bash
+xcodebuild \
+  -project <ProjectName>.xcodeproj \
+  -scheme <scheme> \
+  -destination "platform=iOS Simulator,id=<udid>" \
+  -configuration Debug \
+  build \
+  CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO \
+  2>&1 | tee /tmp/xcodebuild-output.txt | tail -5
+```
+
+After the command finishes, check the result:
+```bash
+tail -5 /tmp/xcodebuild-output.txt
+```
+
+- If the output contains `** BUILD SUCCEEDED **`: continue.
+- If the output contains `** BUILD FAILED **`: run `tail -30 /tmp/xcodebuild-output.txt`, show those lines to the user, and stop.
+
+Locate the built `.app`:
+```bash
+find ~/Library/Developer/Xcode/DerivedData -name "<ProductName>.app" \
+  -path "*iphonesimulator*" 2>/dev/null \
+  | xargs ls -dt 2>/dev/null | head -1
+```
