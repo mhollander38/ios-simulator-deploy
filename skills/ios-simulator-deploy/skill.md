@@ -99,11 +99,12 @@ Ask the user:
 
 Search for the most recently modified simulator `.app`, checking the project folder first then global DerivedData:
 ```bash
-find . -maxdepth 6 -name "*.app" -path "*iphonesimulator*" 2>/dev/null
-find ~/Library/Developer/Xcode/DerivedData -name "*.app" -path "*iphonesimulator*" 2>/dev/null
+{ find . -maxdepth 6 -name "*.app" -path "*iphonesimulator*" 2>/dev/null; \
+  find ~/Library/Developer/Xcode/DerivedData -name "*.app" -path "*iphonesimulator*" 2>/dev/null; } \
+  | xargs ls -dt 2>/dev/null | head -1
 ```
 
-Combine all results, pick the one with the most recent modification time. Show the user:
+Run the combined search to find the most recently modified `.app`. Show the user:
 > "Found: `<path>`
 > Last modified: `<date and time>`"
 
@@ -120,23 +121,50 @@ If yes, continue to Step 4. If no, stop.
 
 List available schemes:
 ```bash
-xcodebuild -list 2>/dev/null
+xcodebuild [<-project ProjectName.xcodeproj | -workspace Name.xcworkspace>] -list 2>/dev/null
 ```
+(Use the `-project` or `-workspace` flag determined in Step 1)
 
 If only one scheme is listed, use it. If multiple, present them and ask the user to choose.
 
 Get the bundle identifier and product name for the chosen scheme:
 ```bash
-xcodebuild -scheme <scheme> -showBuildSettings 2>/dev/null \
+xcodebuild [<-project ProjectName.xcodeproj | -workspace Name.xcworkspace>] -scheme <scheme> -showBuildSettings 2>/dev/null \
   | grep -E "^\s+(PRODUCT_BUNDLE_IDENTIFIER|PRODUCT_NAME)\s*="
 ```
+(Use the same `-project`/`-workspace` flag determined in Step 1)
 
 Note both values — `PRODUCT_BUNDLE_IDENTIFIER` is needed in Step 5 and `PRODUCT_NAME` is used to locate the `.app` after the build.
 
-Run the build (use `-workspace <name>.xcworkspace` instead of `-project <name>.xcodeproj` if a workspace was found in Step 1; for Package.swift-only projects, omit both and use `-scheme` only):
+Run the build using the project type determined in Step 1. Examples for each case:
+
+**For .xcodeproj:**
 ```bash
 xcodebuild \
   -project <ProjectName>.xcodeproj \
+  -scheme <scheme> \
+  -destination "platform=iOS Simulator,id=<udid>" \
+  -configuration Debug \
+  build \
+  CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO \
+  2>&1 | tee /tmp/xcodebuild-output.txt | tail -5
+```
+
+**For .xcworkspace:**
+```bash
+xcodebuild \
+  -workspace <WorkspaceName>.xcworkspace \
+  -scheme <scheme> \
+  -destination "platform=iOS Simulator,id=<udid>" \
+  -configuration Debug \
+  build \
+  CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO \
+  2>&1 | tee /tmp/xcodebuild-output.txt | tail -5
+```
+
+**For Package.swift only:**
+```bash
+xcodebuild \
   -scheme <scheme> \
   -destination "platform=iOS Simulator,id=<udid>" \
   -configuration Debug \
