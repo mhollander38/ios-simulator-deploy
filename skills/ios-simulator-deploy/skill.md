@@ -187,3 +187,25 @@ find ~/Library/Developer/Xcode/DerivedData -name "<ProductName>.app" \
   -path "*iphonesimulator*" 2>/dev/null \
   | xargs ls -dt 2>/dev/null | head -1
 ```
+
+## Step 5: Install and Launch
+
+With `<app-path>`, `<udid>`, and `<bundle-id>` confirmed, run each command in sequence. Stop and report the error output if any command fails.
+
+Install the app:
+```bash
+xcrun simctl install <udid> <app-path>
+```
+
+Launch the app:
+```bash
+xcrun simctl launch <udid> <bundle-id>
+```
+
+Bring the Simulator window to the foreground:
+```bash
+open -a Simulator
+```
+
+Report success to the user:
+> "Launched **`<AppName>`** on **`<simulator name>`** (iOS `<version>`)."
