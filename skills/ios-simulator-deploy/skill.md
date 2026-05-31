@@ -21,6 +21,9 @@ Then stop — do not continue.
 Note the project type found for later use:
 - A standalone `.xcworkspace` (not inside a `.xcodeproj`) → use `-workspace` flag with xcodebuild
 - Only a `.xcodeproj` → use `-project` flag with xcodebuild
+- Only a `Package.swift` (no `.xcodeproj` or `.xcworkspace`) → use `xcodebuild` with `-scheme` only (no `-project` or `-workspace` flag)
+
+If both a `.xcworkspace` and a `.xcodeproj` are found at the root, prefer the `.xcworkspace`.
 
 ## Step 2: Select Simulator
 
@@ -33,7 +36,7 @@ booted, available = [], []
 for runtime, devs in d.items():
     if 'iOS' not in runtime:
         continue
-    version = runtime.split('.')[-1].replace('-', '.')
+    version = '.'.join(runtime.split('.')[-1].split('-')[1:])
     for dev in devs:
         if not dev['isAvailable']:
             continue
@@ -62,7 +65,7 @@ Handle the output:
 
 **No booted simulators, but available ones exist:** Present the numbered available list and ask the user to type a number.
 
-**No simulators at all:** Tell the user, then offer to create one:
+**No simulators at all** (both `BOOTED` and `AVAILABLE` sections are empty — only the two header lines appear): Tell the user, then offer to create one:
 ```bash
 xcrun simctl list devicetypes | grep iPhone | head -10
 xcrun simctl list runtimes | grep iOS
