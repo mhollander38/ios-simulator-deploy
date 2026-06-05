@@ -194,6 +194,18 @@ find ~/Library/Developer/Xcode/DerivedData -name "<product-name>.app" \
 
 ## Step 5: Install and Launch
 
+Before installing, ask the user:
+> "How would you like to install?
+> 1. **Deploy in place** (default) — installs over the existing app, preserving all app data and previously granted permissions (location, notifications, etc.)
+> 2. **Fresh install** — uninstalls first, then installs clean. Wipes all app data and resets iOS permission prompts (location, notifications, etc.) so they appear again on next use. Use this when you've made SwiftData model changes without defaults, or want a clean slate."
+
+**If option 2 — Fresh install:** Uninstall the app first:
+```bash
+xcrun simctl uninstall <udid> <bundle-id>
+```
+
+Then proceed with install for both options.
+
 With `<app-path>`, `<udid>`, and `<bundle-id>` confirmed, run each command in sequence. Stop and report the error output if any command fails.
 
 Install the app:
